@@ -122,7 +122,8 @@ module ActsAsXapian
         
         # basic Xapian objects
         begin
-            @@db = Xapian::Database.new(@@db_path)
+            # @@db = Xapian::Database.new(@@db_path)
+            @@db = Xapian::Database.new(Xapian::remote_open("192.168.1.15", 8337))
             @@enquire = Xapian::Enquire.new(@@db)
         rescue IOError
             raise "Xapian database not opened; have you built it with scripts/rebuild-xapian-index ?"
@@ -208,7 +209,8 @@ module ActsAsXapian
         raise "writable_suffix/suffix inconsistency" if @@writable_suffix && @@writable_suffix != suffix
         if @@writable_db.nil?
             # for indexing
-            @@writable_db = Xapian::WritableDatabase.new(new_path, Xapian::DB_CREATE_OR_OPEN)
+            # @@writable_db = Xapian::WritableDatabase.new(new_path, Xapian::DB_CREATE_OR_OPEN)
+            @@writable_db = Xapian::WritableDatabase.new(Xapian::remote_open_writable("192.168.1.15", 8337))
             @@term_generator = Xapian::TermGenerator.new()
             @@term_generator.set_flags(Xapian::TermGenerator::FLAG_SPELLING, 0)
             @@term_generator.database = @@writable_db
@@ -513,7 +515,9 @@ module ActsAsXapian
             raise "found existing " + new_path + " which is not Xapian flint database, please delete for me" if not File.exist?(File.join(new_path, "iamflint"))
             FileUtils.rm_r(new_path)
         end
-        ActsAsXapian.writable_init(".new")
+        while @@writable_db.nil?
+          ActsAsXapian.writable_init(".new")
+        end
 
         # Index everything 
         # XXX not a good place to do this destroy, as unindexed list is lost if

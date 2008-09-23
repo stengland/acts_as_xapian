@@ -209,8 +209,11 @@ module ActsAsXapian
         raise "writable_suffix/suffix inconsistency" if @@writable_suffix && @@writable_suffix != suffix
         if @@writable_db.nil?
             # for indexing
-            # @@writable_db = Xapian::WritableDatabase.new(new_path, Xapian::DB_CREATE_OR_OPEN)
-            @@writable_db = Xapian::WritableDatabase.new(Xapian::remote_open_writable("192.168.1.15", 8337))
+            while @@writable_db.nil?
+              # @@writable_db = Xapian::WritableDatabase.new(new_path, Xapian::DB_CREATE_OR_OPEN)
+              @@writable_db = Xapian::WritableDatabase.new(Xapian::remote_open_writable("192.168.1.15", 8337))
+              sleep(30) if @@writable_db.nil?
+            end
             @@term_generator = Xapian::TermGenerator.new()
             @@term_generator.set_flags(Xapian::TermGenerator::FLAG_SPELLING, 0)
             @@term_generator.database = @@writable_db
@@ -515,9 +518,7 @@ module ActsAsXapian
             raise "found existing " + new_path + " which is not Xapian flint database, please delete for me" if not File.exist?(File.join(new_path, "iamflint"))
             FileUtils.rm_r(new_path)
         end
-        while @@writable_db.nil?
-          ActsAsXapian.writable_init(".new")
-        end
+        ActsAsXapian.writable_init(".new")
 
         # Index everything 
         # XXX not a good place to do this destroy, as unindexed list is lost if
@@ -610,6 +611,10 @@ module ActsAsXapian
 
             doc.add_term("M" + self.class.to_s)
             doc.add_term("I" + doc.data)
+            
+            #across multiple sites we need to know the source
+            self.xapian_options[:terms] += [[(config['site_url'] || ''), 'S', 'site'], [(config['site_name'] || Settings.site_name || 'unknown'), 'N', 'sitename']]
+            
             if self.xapian_options[:terms]
               for term in self.xapian_options[:terms]
                   ActsAsXapian.term_generator.increase_termpos # stop phrases spanning different text fields

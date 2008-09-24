@@ -185,7 +185,7 @@ module ActsAsXapian
         end
     end
 
-    def ActsAsXapian.writable_init(suffix = "")
+    def ActsAsXapian.writable_init
         raise NoXapianRubyBindingsError.new("Xapian Ruby bindings not installed") unless ActsAsXapian.bindings_available
         raise "acts_as_xapian hasn't been called in any models" if @@init_values.empty?
 
@@ -194,12 +194,9 @@ module ActsAsXapian
         
         prepare_environment
 
-        new_path = @@db_path + suffix
-        raise "writable_suffix/suffix inconsistency" if @@writable_suffix && @@writable_suffix != suffix
         if @@writable_db.nil?
-            # for indexing
+            # for indexing TODO: catch this if it cannot connect at all
             while @@writable_db.nil?
-              # @@writable_db = Xapian::WritableDatabase.new(new_path, Xapian::DB_CREATE_OR_OPEN)
               @@writable_db = Xapian::WritableDatabase.new(Xapian::remote_open_writable(@@config['remote_write_addr'], @@config['remote_write_port']))
               sleep(@@config['remote_write_timeout'].to_s/2) if @@writable_db.nil?
             end
@@ -207,7 +204,6 @@ module ActsAsXapian
             @@term_generator.set_flags(Xapian::TermGenerator::FLAG_SPELLING, 0)
             @@term_generator.database = @@writable_db
             @@term_generator.stemmer = @@stemmer
-            @@writable_suffix = suffix
         end
     end
 

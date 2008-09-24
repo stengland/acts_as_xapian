@@ -288,34 +288,13 @@ module ActsAsXapian
             docs = []
             iter = self.matches._begin
             while not iter.equals(self.matches._end)
-                docs.push({:data => iter.document.data, 
+                docs.push({:document => iter.document, 
                         :percent => iter.percent, 
                         :weight => iter.weight,
                         :collapse_count => iter.collapse_count})
                 iter.next
             end
-
-            # Look up without too many SQL queries
-            lhash = {}
-            lhash.default = []
-            for doc in docs
-                k = doc[:data].split('-')
-                lhash[k[0]] = lhash[k[0]] + [k[1]]
-            end
-            # for each class, look up all ids
-            chash = {}
-            for cls, ids in lhash
-                conditions = [ "#{cls.constantize.table_name}.#{cls.constantize.primary_key} in (?)", ids ]
-                found = cls.constantize.find(:all, :conditions => conditions, :include => cls.constantize.xapian_options[:eager_load])
-                for f in found
-                    chash[[cls, f.id]] = f
-                end
-            end
-            # now get them in right order again
-            results = []
-            docs.each{|doc| k = doc[:data].split('-'); results << { :model => chash[[k[0], k[1].to_i]],
-                    :percent => doc[:percent], :weight => doc[:weight], :collapse_count => doc[:collapse_count] } }
-            @cached_results = results
+            @cached_results = docs
             return results
         end
     end

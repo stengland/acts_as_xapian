@@ -411,20 +411,31 @@ module ActsAsXapian
     end
     
     class ResultDoc
-      attr_reader :site_name, :class, :site, :id, :values, :percent, :weight, :collapse_count
+      attr_reader :site_name, :class_name, :site, :id, :values, :percent, :weight, :collapse_count
       
       def initialize(iter)
         data = iter.document.data.split('-')
-        @class = data[0]
+        @class_name = data[0]
         @id = data[1]
         @site = data[2]
         
-        @values = iter.document.values.collect(&:value)
-        @site_name = values[0]
+        @site_name = iter.document.value(0)
+        
+        @values = {}
+        value_options = class_name.constantize.xapian_options[:values]
+        unless value_options.nil?
+          value_options.each do |vo|
+            @values[vo[2].to_sym] = iter.document.value(vo[1])
+          end
+        end 
         
         @percent = iter.percent
         @weight = iter.weight
         @collapse_count = iter.collapse_count
+      end
+      
+      def xapian_options
+        @xapian_options ||= class_name.constantize.xapian_options
       end
       
     end

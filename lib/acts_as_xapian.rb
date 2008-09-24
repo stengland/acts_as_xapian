@@ -201,7 +201,7 @@ module ActsAsXapian
               sleep(@@config['remote_write_timeout'].to_s/2) if @@writable_db.nil?
             end
             @@term_generator = Xapian::TermGenerator.new()
-            @@term_generator.set_flags(Xapian::TermGenerator::FLAG_SPELLING, 0)
+#            @@term_generator.set_flags(Xapian::TermGenerator::FLAG_SPELLING, 0)
             @@term_generator.database = @@writable_db
             @@term_generator.stemmer = @@stemmer
         end

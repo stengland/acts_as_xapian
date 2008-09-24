@@ -383,7 +383,7 @@ module ActsAsXapian
 
     end
 
-    # Search for models which contain theimportant terms taken from a specified
+    # Search for models which contain the important terms taken from a specified
     # list of models. i.e. Use to find documents similar to one (or more)
     # documents, or use to refine searches.
     class Similar < QueryBase
@@ -500,14 +500,10 @@ module ActsAsXapian
         raise "when rebuilding all, please call as first and only thing done in process / task" if not ActsAsXapian.writable_db.nil?
 
         prepare_environment
-        
-        # Delete any existing .new database, and open a new one
-        new_path = ActsAsXapian.db_path + ".new"
-        if File.exist?(new_path)
-            raise "found existing " + new_path + " which is not Xapian flint database, please delete for me" if not File.exist?(File.join(new_path, "iamflint"))
-            FileUtils.rm_r(new_path)
-        end
-        ActsAsXapian.writable_init(".new")
+          
+        ActsAsXapian.writable_init
+
+        ActsAsXapian.writable_db.delete_document("S" + config['site'])
 
         # Index everything 
         # XXX not a good place to do this destroy, as unindexed list is lost if
@@ -531,27 +527,6 @@ module ActsAsXapian
         end
         
         ActsAsXapian.writable_db.flush
-
-        # Rename into place
-        old_path = ActsAsXapian.db_path
-        temp_path = ActsAsXapian.db_path + ".tmp"
-        if File.exist?(temp_path)
-            raise "temporary database found " + temp_path + " which is not Xapian flint database, please delete for me" if not File.exist?(File.join(temp_path, "iamflint"))
-            FileUtils.rm_r(temp_path)
-        end
-        if File.exist?(old_path)
-            FileUtils.mv old_path, temp_path
-        end
-        FileUtils.mv new_path, old_path
-
-        # Delete old database
-        if File.exist?(temp_path)
-            raise "old database now at " + temp_path + " is not Xapian flint database, please delete for me" if not File.exist?(File.join(temp_path, "iamflint"))
-            FileUtils.rm_r(temp_path)
-        end
-
-        # You'll want to restart your FastCGI or Mongrel processes after this,
-        # so they get the new db
     end
 
     ######################################################################
@@ -560,7 +535,9 @@ module ActsAsXapian
     module InstanceMethods
         # Used internally
         def xapian_document_term
-            self.class.to_s + "-" + self.id.to_s
+          config = ActsAsXapian.config
+          
+          self.class.to_s + "-" + self.id.to_s + "-" + config['site']
         end
 
         # Extract value of a field from the model
@@ -600,6 +577,8 @@ module ActsAsXapian
 
             doc.add_term("M" + self.class.to_s)
             doc.add_term("I" + doc.data)
+            
+            config = ActsAsXapian.config
             
             #across multiple sites we need to know the source
             self.xapian_options[:terms] += [[(config['site_url'] || ''), 'S', 'site'], [(config['site_name'] || Settings.site_name || 'unknown'), 'N', 'sitename']]

@@ -289,10 +289,7 @@ module ActsAsXapian
             docs = []
             iter = self.matches._begin
             while not iter.equals(self.matches._end)
-                docs.push({:document => iter.document, 
-                        :percent => iter.percent, 
-                        :weight => iter.weight,
-                        :collapse_count => iter.collapse_count})
+                docs.push(ResultDoc.new(iter))
                 iter.next
             end
             @cached_results = docs
@@ -411,6 +408,25 @@ module ActsAsXapian
             # Call base class constructor
             self.initialize_query(options)
         end
+    end
+    
+    class ResultDoc
+      attr_reader :site_name, :class, :site, :id, :values, :percent, :weight, :collapse_count
+      
+      def initialize(iter)
+        data = iter.document.data.split('-')
+        @class = data[0]
+        @id = data[1]
+        @site = data[2]
+        
+        @values = iter.document.values.collect(&:value)
+        @site_name = values[0]
+        
+        @percent = iter.percent
+        @weight = iter.weight
+        @collapse_count = iter.collapse_count
+      end
+      
     end
 
     ######################################################################

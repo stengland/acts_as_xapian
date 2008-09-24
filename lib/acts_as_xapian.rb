@@ -146,7 +146,7 @@ module ActsAsXapian
             if options[:terms]
               for term in options[:terms]
                   raise "Use a single capital letter for term code" if not term[1].match(/^[A-Z]$/)
-                  raise "M and I are reserved for use as the model/id term" if term[1] == "M" or term[1] == "I"
+                  raise "M, I and S are reserved for use as the model/id/site term" if term[1] == "M" or term[1] == "I" or term[1] == "S"  
                   raise "model and modelid are reserved for use as the model/id prefixes" if term[2] == "model" or term[2] == "modelid"
                   raise "Z is reserved for stemming terms" if term[1] == "Z"
                   raise "Already have code '" + term[1] + "' in another model but with different prefix '" + @@terms_by_capital[term[1]] + "'" if @@terms_by_capital.include?(term[1]) && @@terms_by_capital[term[1]] != term[2]
@@ -157,6 +157,7 @@ module ActsAsXapian
             if options[:values]
               for value in options[:values]
                   raise "Value index '"+value[1].to_s+"' must be an integer, is " + value[1].class.to_s if value[1].class != 1.class
+                  raise "Value index '0' is reserved for Site Name" if value[1].class == 0
                   raise "Already have value index '" + value[1].to_s + "' in another model but with different prefix '" + @@values_by_number[value[1]].to_s + "'" if @@values_by_number.include?(value[1]) && @@values_by_number[value[1]] != value[2]
 
                   # date types are special, mark them so the first model they're seen for
@@ -552,14 +553,10 @@ module ActsAsXapian
 
             doc.add_term("M" + self.class.to_s)
             doc.add_term("I" + doc.data)
-            
-            config = ActsAsXapian.config
-            
             #across multiple sites we need to know the source
-            ActsAsXapian.term_generator.increase_termpos
-            ActsAsXapian.term_generator.index_text((config['site_url'] || ''), 1, 'S')
-            ActsAsXapian.term_generator.increase_termpos
-            ActsAsXapian.term_generator.index_text((config['site_name'] || Settings.site_name || 'unknown'), 1, 'N')
+            doc.add_term("S" + (ActsAsXapian.config['site'] || ''))
+            doc.add_value(0, (ActsAsXapian.config['site_name'] || Settings.site_name || 'unknown')) 
+
 
             
             if self.xapian_options[:terms]

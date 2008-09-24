@@ -581,7 +581,11 @@ module ActsAsXapian
             config = ActsAsXapian.config
             
             #across multiple sites we need to know the source
-            self.xapian_options[:terms] += [[(config['site_url'] || ''), 'S', 'site'], [(config['site_name'] || Settings.site_name || 'unknown'), 'N', 'sitename']]
+            ActsAsXapian.term_generator.increase_termpos
+            ActsAsXapian.term_generator.index_text((config['site_url'] || ''), 1, 'S')
+            ActsAsXapian.term_generator.increase_termpos
+            ActsAsXapian.term_generator.index_text((config['site_name'] || Settings.site_name || 'unknown'), 1, 'N')
+
             
             if self.xapian_options[:terms]
               for term in self.xapian_options[:terms]

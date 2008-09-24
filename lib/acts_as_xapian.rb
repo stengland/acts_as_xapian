@@ -88,18 +88,6 @@ module ActsAsXapian
       config_file = RAILS_ROOT + "/config/xapian.yml"
       @@config = File.exists?(config_file) ? YAML.load_file(config_file)[environment] : {}
 
-      # figure out where the DBs should go
-      if config['base_db_path']
-        db_parent_path = RAILS_ROOT + "/" + config['base_db_path']
-      else
-        db_parent_path = File.join(File.dirname(__FILE__), '../xapiandbs/')
-      end
-
-      # make the directory for the xapian databases to go in
-      Dir.mkdir(db_parent_path) unless File.exists?(db_parent_path)
-
-      @@db_path = File.join(db_parent_path, environment) 
-
       # make some things that don't depend on the db
       # XXX this gets made once for each acts_as_xapian. Oh well.
       @@stemmer = Xapian::Stem.new('english')
@@ -120,10 +108,11 @@ module ActsAsXapian
 
         prepare_environment
         
+        
         # basic Xapian objects
         begin
             # @@db = Xapian::Database.new(@@db_path)
-            @@db = Xapian::Database.new(Xapian::remote_open("192.168.1.15", 8337))
+            @@db = Xapian::Database.new(Xapian::remote_open(@@config['remote_read_addr'], @@config['remote_read_port']))
             @@enquire = Xapian::Enquire.new(@@db)
         rescue IOError
             raise "Xapian database not opened; have you built it with scripts/rebuild-xapian-index ?"
@@ -211,8 +200,8 @@ module ActsAsXapian
             # for indexing
             while @@writable_db.nil?
               # @@writable_db = Xapian::WritableDatabase.new(new_path, Xapian::DB_CREATE_OR_OPEN)
-              @@writable_db = Xapian::WritableDatabase.new(Xapian::remote_open_writable("192.168.1.15", 8337))
-              sleep(30) if @@writable_db.nil?
+              @@writable_db = Xapian::WritableDatabase.new(Xapian::remote_open_writable(@@config['remote_write_addr'], @@config['remote_write_port']))
+              sleep(@@config['remote_write_timeout'].to_s/2) if @@writable_db.nil?
             end
             @@term_generator = Xapian::TermGenerator.new()
             @@term_generator.set_flags(Xapian::TermGenerator::FLAG_SPELLING, 0)

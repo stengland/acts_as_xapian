@@ -1,0 +1,30 @@
+# Xapian Config file
+development:
+  remote_write_timeout: 60000
+  remote_write_addr: "192.168.1.15"
+  remote_write_port: 8337
+  remote_read_addr: "192.168.1.15"
+  remote_read_port: 8337
+  site: "192.168.1.17:3000"
+  site_name: "Dans local machine"
+
+# Warning: The database defined as 'test' will be erased and
+# re-generated from your development database when you run 'rake'.
+# Do not set this db to the same as development or production.
+test:
+  remote_write_timeout: 60000
+  remote_write_addr: "192.168.1.15"
+  remote_write_port: 8337
+  remote_read_addr: "192.168.1.15"
+  remote_read_port: 8337
+  site: "192.168.1.17:3000"
+  site_name: "Dans local machine"
+
+production:
+  remote_write_timeout: 60000
+  remote_write_addr: "192.168.1.15"
+  remote_write_port: 8337
+  remote_read_addr: "192.168.1.15"
+  remote_read_port: 8337
+  site: "192.168.1.17:3000"
+  site_name: "Dans local machine"

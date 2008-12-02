@@ -354,7 +354,7 @@ module ActsAsXapian
             
             # Searching only specific sites
             unless options[:sites].blank?
-              sites = options[:sites].is_a? Array ? options[:sites] : [options[:sites]]
+              sites = options[:sites].is_a?( Array ) ? options[:sites] : [options[:sites]]
               site_query =  Xapian::Query.new(Xapian::Query::OP_OR, sites.map{|s| "S" + s.to_s})
               self.query = Xapian::Query.new(Xapian::Query::OP_AND, self.query, site_query)
             end
@@ -449,9 +449,9 @@ module ActsAsXapian
       
       def initialize(iter)
         data = iter.document.data.split('-')
-        @class_name = data[0]
-        @id = data[1]
-        @site = data[2]
+        @class_name = data.delete_at(0)
+        @id = data.delete_at(0)
+        @site = data.join('-')
         
         @site_name = iter.document.value(0)
         

@@ -325,7 +325,7 @@ module ActsAsXapian
         # User]. Can take a single model class, or you can express the model
         # class names in strings if you like.
         # query_string - user inputed query string, with syntax much like Google Search
-        def initialize(model_classes, query_string, options = {})
+        def initialize(model_classes, options = {})
             # Check parameters, convert to actual array of model classes
             new_model_classes = []
             model_classes = [model_classes] if model_classes.class != Array
@@ -339,17 +339,24 @@ module ActsAsXapian
             # Set things up
             self.initialize_db
 
-            # Case of a string, searching for a Google-like syntax query
-            self.query_string = query_string
-
             # Construct query which only finds things from specified models
             self.query = Xapian::Query.new(Xapian::Query::OP_OR, model_classes.map{|mc| "M" + mc.to_s})
-            unless self.query_string.blank?
+
+            # Case of a string, searching for a Google-like syntax query
+            unless options[:query_string].blank?
+              self.query_string = options[:query_string]
               user_query = ActsAsXapian.query_parser.parse_query(self.query_string,
                     Xapian::QueryParser::FLAG_BOOLEAN | Xapian::QueryParser::FLAG_PHRASE |
                     Xapian::QueryParser::FLAG_LOVEHATE | Xapian::QueryParser::FLAG_WILDCARD |
                     Xapian::QueryParser::FLAG_SPELLING_CORRECTION)
               self.query = Xapian::Query.new(Xapian::Query::OP_AND, self.query, user_query)
+            end
+            
+            # Searching only specific sites
+            unless options[:sites].blank?
+              sites = options[:sites].is_a? Array ? options[:sites] : [options[:sites]]
+              site_query =  Xapian::Query.new(Xapian::Query::OP_OR, sites.map{|s| "S" + s.to_s})
+              self.query = Xapian::Query.new(Xapian::Query::OP_AND, self.query, site_query)
             end
 
             # Call base class constructor
@@ -371,7 +378,7 @@ module ActsAsXapian
 
         # Text for lines in log file
         def log_description
-            "Search: " + self.query_string
+            "Search: #{self.description}"
         end
 
     end

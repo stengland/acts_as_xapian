@@ -115,7 +115,7 @@ module ActsAsXapian
             @@db = Xapian::Database.new(Xapian::remote_open(@@config['remote_read_addr'], @@config['remote_read_port']))
             @@enquire = Xapian::Enquire.new(@@db)
         rescue IOError
-            raise "Xapian database not opened; have you built it with scripts/rebuild-xapian-index ?"
+            raise "Xapian could not connect to remote database."
         end
 
         init_query_parser
@@ -343,12 +343,14 @@ module ActsAsXapian
             self.query_string = query_string
 
             # Construct query which only finds things from specified models
-            model_query = Xapian::Query.new(Xapian::Query::OP_OR, model_classes.map{|mc| "M" + mc.to_s})
-            user_query = ActsAsXapian.query_parser.parse_query(self.query_string,
-                  Xapian::QueryParser::FLAG_BOOLEAN | Xapian::QueryParser::FLAG_PHRASE |
-                  Xapian::QueryParser::FLAG_LOVEHATE | Xapian::QueryParser::FLAG_WILDCARD |
-                  Xapian::QueryParser::FLAG_SPELLING_CORRECTION)
-            self.query = Xapian::Query.new(Xapian::Query::OP_AND, model_query, user_query)
+            self.query = Xapian::Query.new(Xapian::Query::OP_OR, model_classes.map{|mc| "M" + mc.to_s})
+            unless self.query_string.blank?
+              user_query = ActsAsXapian.query_parser.parse_query(self.query_string,
+                    Xapian::QueryParser::FLAG_BOOLEAN | Xapian::QueryParser::FLAG_PHRASE |
+                    Xapian::QueryParser::FLAG_LOVEHATE | Xapian::QueryParser::FLAG_WILDCARD |
+                    Xapian::QueryParser::FLAG_SPELLING_CORRECTION)
+              self.query = Xapian::Query.new(Xapian::Query::OP_AND, self.query, user_query)
+            end
 
             # Call base class constructor
             self.initialize_query(options)
@@ -457,6 +459,10 @@ module ActsAsXapian
         @percent = iter.percent
         @weight = iter.weight
         @collapse_count = iter.collapse_count
+      end
+      
+      def local?
+        @local ||= ActsAsXapian.config['site'] == @site
       end
       
       def xapian_options

@@ -64,7 +64,7 @@ module ActsAsXapian
         @@values_by_prefix
     end
     def ActsAsXapian.config
-      @@config
+      @@config ||= config_init
     end
 
     ######################################################################
@@ -75,11 +75,8 @@ module ActsAsXapian
             @@init_values.push([classname,options])
         end
     end
-
-    # Reads the config file (if any) and sets up the path to the database we'll be using
-    def ActsAsXapian.prepare_environment
-      return unless @@db_path.nil?
-
+    
+    def ActsAsXapian.config_init
       # barf if we can't figure out the environment
       environment = (ENV['RAILS_ENV'] or RAILS_ENV)
       raise "Set RAILS_ENV, so acts_as_xapian can find the right Xapian database" if not environment
@@ -87,6 +84,13 @@ module ActsAsXapian
       # check for a config file
       config_file = RAILS_ROOT + "/config/xapian.yml"
       @@config = File.exists?(config_file) ? YAML.load_file(config_file)[environment] : {}
+    end
+
+    # Reads the config file (if any) and sets up the path to the database we'll be using
+    def ActsAsXapian.prepare_environment
+      return unless @@db_path.nil?
+      
+      config_init
 
       # make some things that don't depend on the db
       # XXX this gets made once for each acts_as_xapian. Oh well.
@@ -185,7 +189,7 @@ module ActsAsXapian
             end
         end
     end
-
+    
     def ActsAsXapian.writable_init
         raise NoXapianRubyBindingsError.new("Xapian Ruby bindings not installed") unless ActsAsXapian.bindings_available
         raise "acts_as_xapian hasn't been called in any models" if @@init_values.empty?

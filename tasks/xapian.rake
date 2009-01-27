@@ -32,7 +32,7 @@ namespace :xapian do
         raise "specify models=\"ModelName1 ModelName2\" as parameter" if ENV['models'].nil?
         raise "specify query=\"your terms\" as parameter" if ENV['query'].nil?
         s = ActsAsXapian::Search.new(ENV['models'].split(" ").map{|m| m.constantize}, 
-            ENV['query'],
+            :query_string => ENV['query'],
             :offset => (ENV['offset'] || 0), :limit => (ENV['limit'] || 10),
             :sort_by_prefix => (ENV['sort_by_prefix'] || nil), 
             :collapse_by_prefix => (ENV['collapse_by_prefix'] || nil)

@@ -150,7 +150,7 @@ module ActsAsXapian
             if options[:terms]
               for term in options[:terms]
                   raise "Use a single capital letter for term code" if not term[1].match(/^[A-Z]$/)
-                  raise "M, I and S are reserved for use as the model/id/site term" if term[1] == "M" or term[1] == "I" or term[1] == "S"  
+                  raise "M, I, G and S are reserved for use as the model/id/global/site term" if term[1] == "M" or term[1] == "I" or term[1] == "G" or term[1] == "S"  
                   raise "model and modelid are reserved for use as the model/id prefixes" if term[2] == "model" or term[2] == "modelid"
                   raise "Z is reserved for stemming terms" if term[1] == "Z"
                   raise "Already have code '" + term[1] + "' in another model but with different prefix '" + @@terms_by_capital[term[1]] + "'" if @@terms_by_capital.include?(term[1]) && @@terms_by_capital[term[1]] != term[2]
@@ -180,7 +180,7 @@ module ActsAsXapian
 
                       # stop it being garbage collected, as
                       # add_valuerangeprocessor ref is outside Ruby's GC
-                      @@value_ranges_store.push(value_range) 
+                      @@value_ranges_store.push(value_range)
                   end
 
                   @@values_by_number[value[1]] = value[2]
@@ -330,6 +330,7 @@ module ActsAsXapian
         # class names in strings if you like.
         # query_string - user inputed query string, with syntax much like Google Search
         def initialize(model_classes, options = {})
+          
             # Check parameters, convert to actual array of model classes
             new_model_classes = []
             model_classes = [model_classes] if model_classes.class != Array
@@ -359,9 +360,39 @@ module ActsAsXapian
             # Searching only specific sites
             unless options[:sites].blank?
               sites = options[:sites].is_a?( Array ) ? options[:sites] : [options[:sites]]
-              site_query =  Xapian::Query.new(Xapian::Query::OP_OR, sites.map{|s| "S" + s.to_s})
+              site_query =  Xapian::Query.new(Xapian::Query::OP_OR, sites.map{|s| "S" + s.to_s}+["Gtrue"])
               self.query = Xapian::Query.new(Xapian::Query::OP_AND, self.query, site_query)
+            else
+              self.query = Xapian::Query.new(Xapian::Query::OP_AND, self.query, Xapian::Query.new(Xapian::Query::OP_OR, ['Gtrue']))
             end
+            
+            
+            
+            #range functionality
+            if options[:ranges].is_a? Hash
+              options[:ranges].each_pair do | key, value |
+                value_number = ActsAsXapian.values_by_prefix[key.to_s]
+                case value[0]
+                when :le
+                  range = Xapian::Query.new(Xapian::Query::OP_VALUE_LE, value_number, value[1])
+                when :ge
+                  range = Xapian::Query.new(Xapian::Query::OP_VALUE_GE, value_number, value[1])
+                else
+                  range = Xapian::Query.new(Xapian::Query::OP_VALUE_RANGE, value_number, value.min, value.max)                  
+                end
+                self.query = Xapian::Query.new(Xapian::Query::OP_FILTER, self.query, range)
+              end
+            end
+
+            # if options[:mulitvals].is_a? Hash
+            #   options[:multivals].each_pair do | key, value |
+            #     ge = Xapian::Query.new(Xapian::Query::OP_VALUE_GE, value[0], key)
+            #     le = Xapian::Query.new(Xapian::Query::OP_VALUE_GE, value[1], key)
+            #     range = Xapian::Query.new(Xapian::Query::OP_AND, [ge,le])
+            #     self.query = Xapian::Query.new(Xapian::Query::OP_FILTER, self.query, range)
+            #     
+            #   end
+            # end
 
             # Call base class constructor
             self.initialize_query(options)
@@ -623,7 +654,8 @@ module ActsAsXapian
             doc.add_term("M" + self.class.to_s)
             doc.add_term("I" + doc.data)
             #across multiple sites we need to know the source
-            doc.add_term("S" + (ActsAsXapian.config['site'] || ''))
+            doc.add_term("S" + ActsAsXapian.config['site'])
+            doc.add_term("G" + (self.global ? 'true' : 'false') ) if self.respond_to? 'global'
             doc.add_value(0, (ActsAsXapian.config['site_name'] || Settings.site_name || 'unknown')) 
 
 

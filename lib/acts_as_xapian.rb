@@ -621,9 +621,9 @@ module ActsAsXapian
             value = self[field] || self.send(field.to_sym)
             if type == :date
                 if value.kind_of?(Time)
-                    value.utc.strftime("%Y%m%d")
+                    value.strftime("%Y%m%d")
                 elsif value.kind_of?(Date)
-                    value.to_time.utc.strftime("%Y%m%d")
+                    value.to_time.strftime("%Y%m%d")
                 else
                     raise "Only Time or Date types supported by acts_as_xapian for :date fields, got " + value.class.to_s
                 end
